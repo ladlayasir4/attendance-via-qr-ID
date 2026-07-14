@@ -206,16 +206,18 @@
 
     <section class="panel">
       <h2 class="title">Employee Attendance</h2>
-      <p class="subtitle">Enter your Employee ID or name. First entry records check-in. Second entry records check-out.</p>
+      <p class="subtitle" id="subtitle">Enter your Employee ID or name once. This browser will be linked to that employee.</p>
 
-      <label for="employeeId">Employee ID or Name
-        <input id="employeeId" autocomplete="off" inputmode="text" placeholder="EMP001 or Yasir Abbas">
-      </label>
+      <div id="entryBlock">
+        <label for="employeeId">Employee ID or Name
+          <input id="employeeId" autocomplete="off" inputmode="text" placeholder="EMP001 or Yasir Abbas">
+        </label>
+      </div>
       <button id="submitBtn" type="button">Submit Attendance</button>
 
       <div class="status-card busy" id="statusCard">
         <div class="status-title">Ready</div>
-        <div class="status-detail">Type Employee ID or name and submit.</div>
+        <div class="status-detail">Checking this device...</div>
       </div>
     </section>
 
@@ -224,12 +226,15 @@
 
   <script>
     let busy = false;
+    let linkedEmployee = null;
     const employeeId = document.getElementById('employeeId');
     const submitBtn = document.getElementById('submitBtn');
     const statusCard = document.getElementById('statusCard');
+    const entryBlock = document.getElementById('entryBlock');
+    const subtitle = document.getElementById('subtitle');
+    const deviceToken = getOrCreateDeviceToken();
 
     window.addEventListener('load', () => {
-      employeeId.focus();
       google.script.run
         .withSuccessHandler(data => {
           if (data && data.ok) {
@@ -238,14 +243,76 @@
           }
         })
         .getAppBootstrap();
+      loadDeviceStatus();
     });
 
     submitBtn.addEventListener('click', submitAttendance);
     employeeId.addEventListener('keydown', event => {
       if (event.key === 'Enter') submitAttendance();
     });
+
+    function getOrCreateDeviceToken() {
+      const key = 'attendanceDeviceToken';
+      let token = localStorage.getItem(key);
+      if (token) return token;
+      const random = window.crypto && window.crypto.getRandomValues
+        ? Array.from(window.crypto.getRandomValues(new Uint8Array(24))).map(n => n.toString(16).padStart(2, '0')).join('')
+        : String(Date.now()) + Math.random().toString(16).slice(2);
+      token = 'dev_' + random;
+      localStorage.setItem(key, token);
+      return token;
+    }
+
+    function loadDeviceStatus() {
+      setPageBusy(true);
+      google.script.run
+        .withSuccessHandler(result => {
+          setPageBusy(false);
+          if (!result || !result.ok) {
+            renderUnlinked();
+            setStatus((result && result.message) || 'Could not check this device.', 'error');
+            return;
+          }
+          if (!result.linked) {
+            renderUnlinked();
+            return;
+          }
+          linkedEmployee = result.employee;
+          renderLinked(result);
+        })
+        .withFailureHandler(err => {
+          setPageBusy(false);
+          renderUnlinked();
+          setStatus('Could not check this device', 'error', err && err.message ? err.message : String(err));
+        })
+        .getDeviceStatus(deviceToken);
+    }
+
+    function renderUnlinked() {
+      linkedEmployee = null;
+      entryBlock.style.display = '';
+      submitBtn.style.display = '';
+      submitBtn.textContent = 'Link Device and Check In';
+      subtitle.textContent = 'Enter your Employee ID or name once. This browser will be linked to that employee.';
+      setStatus('Ready', 'busy', 'Type Employee ID or name and submit.');
+      employeeId.focus();
+    }
+
+    function renderLinked(result) {
+      entryBlock.style.display = 'none';
+      subtitle.textContent = 'This browser is linked to ' + result.employee.name + '.';
+      if (result.dayState === 'completed') {
+        submitBtn.style.display = 'none';
+        renderCompleted(result.employee, result.record);
+        return;
+      }
+      submitBtn.style.display = '';
+      submitBtn.textContent = result.dayState === 'checked_in' ? 'Check Out' : 'Check In';
+      renderLinkedStatus(result.employee, result.record, result.message);
+    }
+
     function submitAttendance() {
-      const identifier = employeeId.value.trim().replace(/\s+/g, ' ');
+      const identifier = linkedEmployee ? linkedEmployee.employeeId : employeeId.value.trim().replace(/\s+/g, ' ');
       if (!identifier || busy) {
         if (!identifier) setStatus('Employee ID or name required', 'error', 'Enter EMP001 or the employee name.');
         return;
@@ -253,15 +320,15 @@
 
       busy = true;
       submitBtn.disabled = true;
-      setStatus('Recording attendance...', 'busy', identifier);
+      setStatus('Recording attendance...', 'busy', linkedEmployee ? linkedEmployee.name : identifier);
 
       google.script.run
         .withSuccessHandler(result => {
           busy = false;
           submitBtn.disabled = false;
-          employeeId.focus();
           if (result && result.ok) {
             employeeId.value = '';
+            linkedEmployee = result.employee;
             renderSuccess(result);
           } else {
             setStatus((result && result.message) || 'Attendance failed.', 'error');
@@ -270,15 +337,26 @@
         .withFailureHandler(err => {
           busy = false;
           submitBtn.disabled = false;
-          employeeId.focus();
-          setStatus('Attendance failed', 'error', err && err.message ? err.message : String(err));
+          setStatus('Refreshing attendance status...', 'busy', err && err.message ? err.message : String(err));
+          loadDeviceStatus();
         })
-        .markAttendance(identifier);
+        .markAttendanceWithDevice(identifier, deviceToken);
     }
 
     function renderSuccess(result) {
       const r = result.record || {};
+      if (result.dayState === 'completed') {
+        entryBlock.style.display = 'none';
+        submitBtn.style.display = 'none';
+        subtitle.textContent = 'This browser is linked to ' + result.employee.name + '.';
+        renderCompleted(result.employee, r);
+        return;
+      }
       const action = result.action === 'checkout' ? 'Check-out recorded' : 'Check-in recorded';
+      entryBlock.style.display = 'none';
+      subtitle.textContent = 'This browser is linked to ' + result.employee.name + '.';
+      submitBtn.style.display = '';
+      submitBtn.textContent = 'Check Out';
       statusCard.className = 'status-card ok';
       statusCard.innerHTML = `
         <div class="status-title">${escapeHtml(action)}</div>
@@ -286,9 +364,39 @@
           <strong>${escapeHtml(result.employee.name)} (${escapeHtml(result.employee.employeeId)})</strong>
           <span>${escapeHtml(result.employee.department || 'No department')}</span>
         </div>
+        ${renderRecordGrid(r, result)}
+      `;
+    }
+
+    function renderLinkedStatus(employee, record, message) {
+      statusCard.className = 'status-card ok';
+      statusCard.innerHTML = `
+        <div class="status-title">${escapeHtml(message || 'Device linked')}</div>
+        <div class="status-detail">
+          <strong>${escapeHtml(employee.name)} (${escapeHtml(employee.employeeId)})</strong>
+          <span>${escapeHtml(employee.department || 'No department')}</span>
+        </div>
+        ${record ? renderRecordGrid(record, {}) : ''}
+      `;
+    }
+
+    function renderCompleted(employee, record) {
+      statusCard.className = 'status-card ok';
+      statusCard.innerHTML = `
+        <div class="status-title">Attendance completed today</div>
+        <div class="status-detail">
+          <strong>${escapeHtml(employee.name)} (${escapeHtml(employee.employeeId)})</strong>
+          <span>Come tomorrow.</span>
+        </div>
+        ${record ? renderRecordGrid(record, {}) : ''}
+      `;
+    }
+
+    function renderRecordGrid(r, result) {
+      return `
         <div class="record-grid">
-          <div class="metric"><span>Date</span><strong>${escapeHtml(r.date || result.date)}</strong></div>
-          <div class="metric"><span>Time</span><strong>${escapeHtml(result.time)}</strong></div>
+          <div class="metric"><span>Date</span><strong>${escapeHtml(r.date || result.date || '-')}</strong></div>
+          <div class="metric"><span>Time</span><strong>${escapeHtml(result.time || '-')}</strong></div>
           <div class="metric"><span>IN</span><strong>${escapeHtml(r.inTime || '-')}</strong></div>
           <div class="metric"><span>OUT</span><strong>${escapeHtml(r.outTime || '-')}</strong></div>
           <div class="metric"><span>Late</span><strong>${Number(r.lateMinutes || 0)} min</strong></div>
@@ -297,6 +405,14 @@
           <div class="metric"><span>Status</span><strong>${escapeHtml(r.status || 'Present')}</strong></div>
         </div>
       `;
+    }
+
+    function setPageBusy(isBusy) {
+      submitBtn.disabled = isBusy;
+      if (isBusy) {
+        entryBlock.style.display = 'none';
+        submitBtn.style.display = 'none';
+      }
     }
 
     function setStatus(title, type, detail) {

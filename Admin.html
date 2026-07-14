@@ -379,7 +379,7 @@
           </div>
           <div class="table-wrap" style="margin-top:12px">
             <table>
-              <thead><tr><th>ID</th><th>Name</th><th>Department</th><th>Phone</th><th>Email</th><th>Status</th><th></th></tr></thead>
+              <thead><tr><th>ID</th><th>Name</th><th>Department</th><th>Phone</th><th>Email</th><th>Status</th><th>Device</th><th></th></tr></thead>
               <tbody id="employeeRows"></tbody>
             </table>
           </div>
@@ -662,9 +662,13 @@
           <td>${esc(e.phone)}</td>
           <td>${esc(e.email)}</td>
           <td><span class="badge ${e.status === 'Inactive' ? 'inactive' : ''}">${esc(e.status)}</span></td>
-          <td><button class="secondary" type="button" onclick="openEmployee('${escAttr(e.employeeId)}')">Edit</button></td>
+          <td>${e.deviceToken ? `<span class="badge">Linked</span><br><span class="hint">${esc(e.deviceLinkedAt || '')}</span>` : '<span class="badge warning">Not linked</span>'}</td>
+          <td>
+            <button class="secondary" type="button" onclick="openEmployee('${escAttr(e.employeeId)}')">Edit</button>
+            ${e.deviceToken ? `<button class="danger" type="button" onclick="resetDevice('${escAttr(e.employeeId)}')">Reset Device</button>` : ''}
+          </td>
         </tr>
-      `).join('') : '<tr><td colspan="7">No employees found.</td></tr>';
+      `).join('') : '<tr><td colspan="8">No employees found.</td></tr>';
     }
 
     function renderAttendance() {
@@ -756,6 +760,18 @@
           handleFailure(err);
         })
         .saveEmployee(token, payload);
+    }
+
+    function resetDevice(employeeId) {
+      if (!confirm('Reset linked device for ' + employeeId + '?')) return;
+      google.script.run
+        .withSuccessHandler(result => {
+          if (!guard(result)) return;
+          showAppMessage('Device reset. Employee can link a new browser on next attendance.', 'ok');
+          loadEmployees();
+        })
+        .withFailureHandler(handleFailure)
+        .resetEmployeeDevice(token, employeeId);
     }
 
     function openAttendance(recordKey) {

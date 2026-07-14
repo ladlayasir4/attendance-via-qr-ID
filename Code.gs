@@ -5,7 +5,8 @@ const SHEETS = {
 };
 
 const EMPLOYEE_HEADERS = [
-  'Employee ID', 'Employee Name', 'Department', 'Phone', 'Email', 'Joining Date', 'Status'
+  'Employee ID', 'Employee Name', 'Department', 'Phone', 'Email', 'Joining Date', 'Status',
+  'Device Token', 'Device Linked At'
 ];
 
 const MASTER_HEADERS = [
@@ -152,9 +153,15 @@ function getAppBootstrap() {
 }
 
 function markAttendance(identifier) {
+  return markAttendanceWithDevice(identifier, '');
+}
+
+function markAttendanceWithDevice(identifier, deviceToken) {
   setupDatabase();
   const cleanIdentifier = String(identifier || '').trim();
   if (!cleanIdentifier) return error_('Enter Employee ID or employee name.');
+  const cleanDeviceToken = normalizeDeviceToken_(deviceToken);
+  if (!cleanDeviceToken) return error_('Device token is missing. Refresh the page and try again.');
 
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(10000)) return error_('The system is busy. Please submit again in a few seconds.');
@@ -174,6 +181,10 @@ function markAttendance(identifier) {
     if (String(employee.status).toLowerCase() !== 'active') {
       return error_('This employee is inactive and cannot mark attendance.');
     }
+    const deviceCheck = ensureEmployeeDevice_(employeeId, cleanDeviceToken, tz);
+    if (!deviceCheck.ok) return deviceCheck;
+    employee.deviceToken = cleanDeviceToken;
+    employee.deviceLinkedAt = deviceCheck.deviceLinkedAt || employee.deviceLinkedAt;
 
     const cache = CacheService.getScriptCache();
     const duplicateKey = 'entry:' + employeeId;
@@ -214,6 +225,7 @@ function markAttendance(identifier) {
         '',
         timestamp_(tz)
       ];
+      while (record.length < MASTER_HEADERS.length) record.push('');
       masterSheet.appendRow(record);
       invalidateCache_();
       return {
@@ -223,6 +235,7 @@ function markAttendance(identifier) {
         employee: employee,
         time: currentTime,
         date: today,
+        dayState: 'checked_in',
         record: rowToAttendanceObject_(record, tz)
       };
     }
@@ -233,7 +246,8 @@ function markAttendance(identifier) {
       return error_('Check-out is already recorded for today.');
     }
 
-    const updated = existing.slice();
+    const updated = existing.slice(0, MASTER_HEADERS.length);
+    while (updated.length < MASTER_HEADERS.length) updated.push('');
     updated[5] = currentTime;
     updated[6] = 'Present';
     updated[11] = '';
@@ -260,6 +274,7 @@ function markAttendance(identifier) {
       employee: employee,
       time: currentTime,
       date: today,
+      dayState: 'completed',
       record: rowToAttendanceObject_(updated, tz)
     };
   } catch (err) {
@@ -267,6 +282,35 @@ function markAttendance(identifier) {
   } finally {
     lock.releaseLock();
   }
+}
+
+function getDeviceStatus(deviceToken) {
+  setupDatabase();
+  const cleanDeviceToken = normalizeDeviceToken_(deviceToken);
+  if (!cleanDeviceToken) return error_('Device token is missing.');
+  const config = getConfigMap_();
+  const tz = getTimezone_(config);
+  const employee = listEmployeesInternal_().find(e => e.deviceToken === cleanDeviceToken);
+  if (!employee) {
+    return {
+      ok: true,
+      linked: false,
+      dayState: 'unlinked',
+      message: 'This device is not linked yet.'
+    };
+  }
+  if (String(employee.status).toLowerCase() !== 'active') {
+    return error_('This linked employee is inactive. Contact admin.');
+  }
+  const status = getTodayAttendanceStatus_(employee.employeeId, config);
+  return {
+    ok: true,
+    linked: true,
+    employee: employee,
+    dayState: status.dayState,
+    record: status.record,
+    message: status.message
+  };
 }
 
 function adminLogin(password) {
@@ -317,6 +361,20 @@ function listEmployees(token, query) {
   };
 }
 
+function resetEmployeeDevice(token, employeeId) {
+  requireAdmin_(token);
+  setupDatabase();
+  const cleanId = normalizeId_(employeeId);
+  if (!cleanId) throw new Error('Employee ID is required.');
+  const sheet = getSheet_(SHEETS.EMPLOYEES);
+  const rows = getDataRows_(sheet);
+  const rowIndex = rows.findIndex(row => normalizeId_(row[0]) === cleanId);
+  if (rowIndex === -1) throw new Error('Employee not found.');
+  sheet.getRange(rowIndex + 2, 8, 1, 2).clearContent();
+  invalidateCache_();
+  return { ok: true, message: 'Device reset.' };
+}
+
 function saveEmployee(token, employee) {
   requireAdmin_(token);
   setupDatabase();
@@ -327,6 +385,7 @@ function saveEmployee(token, employee) {
     const sheet = getSheet_(SHEETS.EMPLOYEES);
     const rows = getDataRows_(sheet);
     const existingIndex = rows.findIndex(row => normalizeId_(row[0]) === clean.employeeId);
+    const existing = existingIndex === -1 ? [] : rows[existingIndex];
     const row = [
       clean.employeeId,
       clean.name,
@@ -334,7 +393,9 @@ function saveEmployee(token, employee) {
       clean.phone,
       clean.email,
       clean.joiningDate,
-      clean.status
+      clean.status,
+      existing[7] || '',
+      existing[8] || ''
     ];
     if (existingIndex === -1) {
       sheet.appendRow(row);
@@ -385,6 +446,7 @@ function saveAttendanceRecord(token, record) {
       clean.editedBy || 'Admin',
       timestamp_(tz)
     ];
+    while (row.length < MASTER_HEADERS.length) row.push('');
 
     const sheet = getSheet_(SHEETS.MASTER);
     const rows = getDataRows_(sheet);
@@ -517,19 +579,31 @@ function migrateEmployeeSheet_(sheet) {
 
   const header = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(String);
   const hasOldQrColumn = header[5] === 'QR Code';
-  if (!hasOldQrColumn) return;
+  const missingDeviceColumns = header.indexOf('Device Token') === -1 || header.indexOf('Device Linked At') === -1;
+  if (!hasOldQrColumn && !missingDeviceColumns) return;
 
   const oldRows = lastRow > 1 ? sheet.getRange(2, 1, lastRow - 1, lastCol).getValues() : [];
+  const idIndex = header.indexOf('Employee ID') === -1 ? 0 : header.indexOf('Employee ID');
+  const nameIndex = header.indexOf('Employee Name') === -1 ? 1 : header.indexOf('Employee Name');
+  const departmentIndex = header.indexOf('Department') === -1 ? 2 : header.indexOf('Department');
+  const phoneIndex = header.indexOf('Phone') === -1 ? 3 : header.indexOf('Phone');
+  const emailIndex = header.indexOf('Email') === -1 ? 4 : header.indexOf('Email');
+  const joiningIndex = header.indexOf('Joining Date') === -1 ? (hasOldQrColumn ? 6 : 5) : header.indexOf('Joining Date');
+  const statusIndex = header.indexOf('Status') === -1 ? (hasOldQrColumn ? 7 : 6) : header.indexOf('Status');
+  const deviceTokenIndex = header.indexOf('Device Token');
+  const deviceLinkedIndex = header.indexOf('Device Linked At');
   const newRows = oldRows
-    .filter(row => row[0] || row[1])
+    .filter(row => row[idIndex] || row[nameIndex])
     .map(row => [
-      normalizeId_(row[0]),
-      String(row[1] || ''),
-      String(row[2] || ''),
-      String(row[3] || ''),
-      String(row[4] || ''),
-      row[6] instanceof Date ? row[6] : normalizeDateString_(row[6], DEFAULT_CONFIG.Timezone),
-      String(row[7] || 'Active')
+      normalizeId_(row[idIndex]),
+      String(row[nameIndex] || ''),
+      String(row[departmentIndex] || ''),
+      String(row[phoneIndex] || ''),
+      String(row[emailIndex] || ''),
+      row[joiningIndex] instanceof Date ? row[joiningIndex] : normalizeDateString_(row[joiningIndex], DEFAULT_CONFIG.Timezone),
+      String(row[statusIndex] || 'Active'),
+      deviceTokenIndex === -1 ? '' : String(row[deviceTokenIndex] || ''),
+      deviceLinkedIndex === -1 ? '' : (row[deviceLinkedIndex] instanceof Date ? timestamp_(DEFAULT_CONFIG.Timezone, row[deviceLinkedIndex]) : String(row[deviceLinkedIndex] || ''))
     ]);
 
   sheet.clearContents();
@@ -721,6 +795,59 @@ function findEmployeeByIdentifier_(identifier) {
   return { employee: null };
 }
 
+function ensureEmployeeDevice_(employeeId, deviceToken, tz) {
+  const sheet = getSheet_(SHEETS.EMPLOYEES);
+  const rows = getDataRows_(sheet);
+  const rowIndex = rows.findIndex(row => normalizeId_(row[0]) === employeeId);
+  if (rowIndex === -1) return error_('Employee not found.');
+
+  const existingToken = normalizeDeviceToken_(rows[rowIndex][7]);
+  if (existingToken && existingToken !== deviceToken) {
+    return error_('This employee is already linked to another device. Contact admin to reset device.');
+  }
+
+  const otherEmployee = rows.find(row => normalizeId_(row[0]) !== employeeId && normalizeDeviceToken_(row[7]) === deviceToken);
+  if (otherEmployee) {
+    return error_('This device is already linked to ' + String(otherEmployee[1] || 'another employee') + '.');
+  }
+
+  if (!existingToken) {
+    const linkedAt = timestamp_(tz);
+    sheet.getRange(rowIndex + 2, 8, 1, 2).setValues([[deviceToken, linkedAt]]);
+    invalidateCache_();
+    return { ok: true, deviceLinkedAt: linkedAt };
+  }
+
+  return { ok: true, deviceLinkedAt: rows[rowIndex][8] };
+}
+
+function getTodayAttendanceStatus_(employeeId, config) {
+  const tz = getTimezone_(config);
+  const today = formatDate_(new Date(), tz);
+  const rows = getDataRows_(getSheet_(SHEETS.MASTER));
+  const row = rows.find(item => sameDateValue_(item[0], today, tz) && normalizeId_(item[1]) === employeeId);
+  if (!row) {
+    return {
+      dayState: 'none',
+      record: null,
+      message: 'Ready for check-in.'
+    };
+  }
+  const record = rowToAttendanceObject_(row, tz);
+  if (record.outTime) {
+    return {
+      dayState: 'completed',
+      record: record,
+      message: 'Attendance completed today. Come tomorrow.'
+    };
+  }
+  return {
+    dayState: 'checked_in',
+    record: record,
+    message: 'Check-in recorded. Ready for check-out.'
+  };
+}
+
 function rowToEmployeeObject_(row) {
   return {
     employeeId: normalizeId_(row[0]),
@@ -729,7 +856,9 @@ function rowToEmployeeObject_(row) {
     phone: String(row[3] || ''),
     email: String(row[4] || ''),
     joiningDate: row[5] instanceof Date ? formatDate_(row[5], getTimezone_(getConfigMap_())) : String(row[5] || ''),
-    status: String(row[6] || 'Active')
+    status: String(row[6] || 'Active'),
+    deviceToken: String(row[7] || ''),
+    deviceLinkedAt: row[8] instanceof Date ? timestamp_(getTimezone_(getConfigMap_()), row[8]) : String(row[8] || '')
   };
 }
 
@@ -763,7 +892,9 @@ function sanitizeEmployee_(employee) {
     phone: String(employee && employee.phone || '').trim(),
     email: String(employee && employee.email || '').trim(),
     joiningDate: normalizeDateString_(employee && employee.joiningDate || formatDate_(new Date(), getTimezone_(getConfigMap_())), getTimezone_(getConfigMap_())),
-    status: String(employee && employee.status || 'Active').trim()
+    status: String(employee && employee.status || 'Active').trim(),
+    deviceToken: normalizeDeviceToken_(employee && employee.deviceToken),
+    deviceLinkedAt: String(employee && employee.deviceLinkedAt || '').trim()
   };
   if (!clean.employeeId) throw new Error('Employee ID is required.');
   if (!clean.name) throw new Error('Employee name is required.');
@@ -882,6 +1013,10 @@ function normalizeId_(value) {
 
 function normalizeName_(value) {
   return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function normalizeDeviceToken_(value) {
+  return String(value || '').trim();
 }
 
 function normalizeDateString_(value, tz) {
