@@ -331,7 +331,8 @@
             linkedEmployee = result.employee;
             renderSuccess(result);
           } else {
-            setStatus((result && result.message) || 'Attendance failed.', 'error');
+            setStatus('Refreshing attendance status...', 'busy', (result && result.message) || 'Checking saved attendance.');
+            loadDeviceStatus();
           }
         })
         .withFailureHandler(err => {

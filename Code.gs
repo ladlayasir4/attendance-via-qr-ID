@@ -227,7 +227,6 @@ function markAttendanceWithDevice(identifier, deviceToken) {
       ];
       while (record.length < MASTER_HEADERS.length) record.push('');
       masterSheet.appendRow(record);
-      invalidateCache_();
       return {
         ok: true,
         action: 'checkin',
@@ -236,7 +235,7 @@ function markAttendanceWithDevice(identifier, deviceToken) {
         time: currentTime,
         date: today,
         dayState: 'checked_in',
-        record: rowToAttendanceObject_(record, tz)
+        record: buildAttendanceResponse_(record, tz)
       };
     }
 
@@ -266,7 +265,6 @@ function markAttendanceWithDevice(identifier, deviceToken) {
     updated[10] = calc.workingMinutes;
 
     masterSheet.getRange(sheetRow, 1, 1, MASTER_HEADERS.length).setValues([updated]);
-    invalidateCache_();
     return {
       ok: true,
       action: 'checkout',
@@ -275,7 +273,7 @@ function markAttendanceWithDevice(identifier, deviceToken) {
       time: currentTime,
       date: today,
       dayState: 'completed',
-      record: rowToAttendanceObject_(updated, tz)
+      record: buildAttendanceResponse_(updated, tz)
     };
   } catch (err) {
     return error_(err.message || String(err));
@@ -881,6 +879,24 @@ function rowToAttendanceObject_(row, tz) {
     remarks: String(row[11] || ''),
     editedBy: String(row[12] || ''),
     lastUpdated: row[13] instanceof Date ? timestamp_(tz, row[13]) : String(row[13] || '')
+  };
+}
+
+function buildAttendanceResponse_(row, tz) {
+  const date = row[0] instanceof Date ? formatDate_(row[0], tz) : normalizeDateString_(row[0], tz);
+  return {
+    date: date,
+    employeeId: normalizeId_(row[1]),
+    employeeName: String(row[2] || ''),
+    department: String(row[3] || ''),
+    inTime: normalizeTimeString_(row[4], tz),
+    outTime: normalizeTimeString_(row[5], tz),
+    status: String(row[6] || ''),
+    lateMinutes: Number(row[7] || 0),
+    earlyLeaveMinutes: Number(row[8] || 0),
+    otMinutes: Number(row[9] || 0),
+    workingMinutes: Number(row[10] || 0),
+    remarks: String(row[11] || '')
   };
 }
 
