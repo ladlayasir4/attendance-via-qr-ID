@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root {
+      --green: #0f8f58;
+      --green-dark: #087046;
+      --ink: #172620;
+      --muted: #687872;
+      --line: #dce8e3;
+      --bg: #f6f9f8;
+      --panel: #ffffff;
+      --danger: #b42318;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    button, input, select {
+      font: inherit;
+    }
+    .wrap {
+      width: min(1180px, 94vw);
+      margin: 0 auto;
+      padding: 24px 0 36px;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 1.6rem;
+    }
+    .muted {
+      color: var(--muted);
+      font-size: .92rem;
+      margin-top: 5px;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    a, button {
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 13px;
+      font-weight: 850;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .primary { background: var(--green); color: white; }
+    .secondary { background: #e8f3ee; color: var(--green-dark); }
+    button:disabled { opacity: .62; cursor: wait; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: 0 14px 34px rgba(21, 72, 52, .08);
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .filters {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(150px, 1fr)) auto;
+      gap: 10px;
+      align-items: end;
+    }
+    label {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: .78rem;
+      font-weight: 850;
+    }
+    input, select {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      min-height: 40px;
+      padding: 10px 11px;
+      color: var(--ink);
+      background: #fbfdfc;
+      outline-color: var(--green);
+    }
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+    }
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 13px;
+      background: #fbfdfc;
+    }
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: .78rem;
+      font-weight: 850;
+    }
+    .metric strong {
+      display: block;
+      font-size: 1.35rem;
+      margin-top: 7px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .88rem;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 9px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: #f9fbfa;
+      color: var(--muted);
+      font-size: .74rem;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .message {
+      display: none;
+      margin-bottom: 16px;
+      border-radius: 12px;
+      padding: 11px 12px;
+    }
+    .message.ok { display: block; background: #eefaf3; color: var(--green-dark); }
+    .message.error { display: block; background: #fff1ef; color: var(--danger); }
+    .print-head {
+      display: none;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 900px) {
+      header { align-items: flex-start; flex-direction: column; }
+      .filters { grid-template-columns: repeat(2, 1fr); }
+      .summary { grid-template-columns: repeat(2, 1fr); }
+      .table-wrap { overflow-x: auto; }
+      th, td { white-space: nowrap; }
+    }
+    @media print {
+      body { background: white; }
+      .no-print { display: none !important; }
+      .wrap { width: 100%; padding: 0; }
+      .panel { box-shadow: none; border: 0; padding: 0; }
+      .print-head { display: block; }
+      th, td { font-size: 10px; padding: 5px; }
+      h1 { font-size: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header class="no-print">
+      <div>
+        <h1>Attendance Reports</h1>
+        <div class="muted">Filter monthly records, print as PDF, or export a spreadsheet.</div>
+      </div>
+      <div class="actions">
+        <a class="secondary" href="?page=admin">Admin</a>
+        <button class="secondary" type="button" id="printBtn">PDF</button>
+        <button class="primary" type="button" id="excelBtn">Excel</button>
+      </div>
+    </header>
+
+    <div class="message no-print" id="message"></div>
+
+    <section class="panel no-print">
+      <div class="filters">
+        <label>Month
+          <input id="month" type="month">
+        </label>
+        <label>Employee
+          <input id="employee" list="employeeIds" placeholder="EMP001 or name">
+        </label>
+        <datalist id="employeeIds"></datalist>
+        <label>Department
+          <select id="department"><option value="">All</option></select>
+        </label>
+        <label>Status
+          <select id="status">
+            <option value="">All</option>
+            <option>Present</option>
+            <option>Absent</option>
+            <option>Leave</option>
+            <option>Holiday</option>
+          </select>
+        </label>
+        <label>Search
+          <input id="query" placeholder="Partial search">
+        </label>
+        <button class="primary" type="button" id="loadBtn">Load</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="print-head">
+        <h1 id="printCompany">Attendance Report</h1>
+        <div id="printMeta"></div>
+      </div>
+      <div class="summary" id="summary">
+        <div class="metric"><span>Records</span><strong id="sumRecords">0</strong></div>
+        <div class="metric"><span>Present</span><strong id="sumPresent">0</strong></div>
+        <div class="metric"><span>Late Minutes</span><strong id="sumLate">0</strong></div>
+        <div class="metric"><span>OT Minutes</span><strong id="sumOt">0</strong></div>
+        <div class="metric"><span>Working Minutes</span><strong id="sumWork">0</strong></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Employee ID</th>
+              <th>Employee Name</th>
+              <th>Department</th>
+              <th>IN Time</th>
+              <th>OUT Time</th>
+              <th>Status</th>
+              <th>Late Minutes</th>
+              <th>OT Minutes</th>
+              <th>Working Minutes</th>
+              <th>Remarks</th>
+            </tr>
+          </thead>
+          <tbody id="reportRows"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    let token = sessionStorage.getItem('attendanceAdminToken') || '';
+    let employees = [];
+    let records = [];
+    let currentCompany = 'Attendance Report';
+
+    document.getElementById('loadBtn').addEventListener('click', loadReport);
+    document.getElementById('printBtn').addEventListener('click', () => window.print());
+    document.getElementById('excelBtn').addEventListener('click', exportExcel);
+    document.getElementById('query').addEventListener('keydown', e => { if (e.key === 'Enter') loadReport(); });
+
+    init();
+
+    function init() {
+      if (!token) {
+        showMessage('Please login from the admin page first.', 'error');
+        return;
+      }
+      document.getElementById('month').value = new Date().toISOString().slice(0, 7);
+      loadEmployees();
+      loadReport();
+    }
+
+    function loadEmployees() {
+      google.script.run
+        .withSuccessHandler(result => {
+          if (!guard(result)) return;
+          employees = result.employees || [];
+          document.getElementById('employeeIds').innerHTML = employees.map(e => `<option value="${escAttr(e.employeeId)}">${esc(e.name)}</option>`).join('');
+          const departments = Array.from(new Set(employees.map(e => e.department).filter(Boolean))).sort();
+          document.getElementById('department').innerHTML = '<option value="">All</option>' + departments.map(d => `<option>${esc(d)}</option>`).join('');
+        })
+        .withFailureHandler(handleFailure)
+        .listEmployees(token, '');
+    }
+
+    function filters() {
+      const employeeInput = document.getElementById('employee').value.trim();
+      const employeeMatch = employees.find(e =>
+        e.employeeId.toLowerCase() === employeeInput.toLowerCase() ||
+        e.name.toLowerCase() === employeeInput.toLowerCase()
+      );
+      const freeSearch = document.getElementById('query').value.trim();
+      return {
+        month: document.getElementById('month').value,
+        employeeId: employeeMatch ? employeeMatch.employeeId : '',
+        department: document.getElementById('department').value,
+        status: document.getElementById('status').value,
+        query: [freeSearch, employeeMatch ? '' : employeeInput].filter(Boolean).join(' ')
+      };
+    }
+
+    function loadReport() {
+      if (!token) return;
+      setBusy('loadBtn', true);
+      google.script.run
+        .withSuccessHandler(result => {
+          setBusy('loadBtn', false);
+          if (!guard(result)) return;
+          currentCompany = result.companyName || 'Attendance Report';
+          records = result.records || [];
+          renderReport(result.generatedAt);
+        })
+        .withFailureHandler(err => {
+          setBusy('loadBtn', false);
+          handleFailure(err);
+        })
+        .getReportData(token, filters());
+    }
+
+    function renderReport(generatedAt) {
+      const body = document.getElementById('reportRows');
+      body.innerHTML = records.length ? records.map(r => `
+        <tr>
+          <td>${esc(r.date)}</td>
+          <td>${esc(r.employeeId)}</td>
+          <td>${esc(r.employeeName)}</td>
+          <td>${esc(r.department)}</td>
+          <td>${esc(r.inTime || '-')}</td>
+          <td>${esc(r.outTime || '-')}</td>
+          <td>${esc(r.status)}</td>
+          <td>${Number(r.lateMinutes || 0)}</td>
+          <td>${Number(r.otMinutes || 0)}</td>
+          <td>${Number(r.workingMinutes || 0)}</td>
+          <td>${esc(r.remarks)}</td>
+        </tr>
+      `).join('') : '<tr><td colspan="11">No report records found.</td></tr>';
+
+      const present = records.filter(r => r.status === 'Present').length;
+      const late = records.reduce((sum, r) => sum + Number(r.lateMinutes || 0), 0);
+      const ot = records.reduce((sum, r) => sum + Number(r.otMinutes || 0), 0);
+      const work = records.reduce((sum, r) => sum + Number(r.workingMinutes || 0), 0);
+      setText('sumRecords', records.length);
+      setText('sumPresent', present);
+      setText('sumLate', late);
+      setText('sumOt', ot);
+      setText('sumWork', work);
+      setText('printCompany', currentCompany);
+      document.getElementById('printMeta').textContent = `Month: ${document.getElementById('month').value || 'All'} | Generated: ${generatedAt || ''}`;
+    }
+
+    function exportExcel() {
+      if (!token) return;
+      setBusy('excelBtn', true);
+      google.script.run
+        .withSuccessHandler(result => {
+          setBusy('excelBtn', false);
+          if (!guard(result)) return;
+          showMessage('Spreadsheet created. Opening export...', 'ok');
+          window.open(result.url, '_blank');
+        })
+        .withFailureHandler(err => {
+          setBusy('excelBtn', false);
+          handleFailure(err);
+        })
+        .createExcelReport(token, filters());
+    }
+
+    function guard(result) {
+      if (result && result.ok) return true;
+      showMessage((result && result.message) || 'Request failed.', 'error');
+      return false;
+    }
+
+    function handleFailure(err) {
+      showMessage(err && err.message ? err.message : String(err || 'Unknown error'), 'error');
+    }
+
+    function showMessage(message, type) {
+      const el = document.getElementById('message');
+      el.className = 'message no-print ' + type;
+      el.textContent = message;
+    }
+
+    function setBusy(id, busy) {
+      const el = document.getElementById(id);
+      if (el) el.disabled = busy;
+    }
+
+    function setText(id, value) {
+      document.getElementById(id).textContent = value;
+    }
+
+    function esc(value) {
+      return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function escAttr(value) {
+      return esc(value).replace(/`/g, '&#096;');
+    }
+  </script>
+</body>
+</html>

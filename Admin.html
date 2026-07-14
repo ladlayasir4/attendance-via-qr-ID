@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root {
+      --green: #0f8f58;
+      --green-dark: #087046;
+      --ink: #14251f;
+      --muted: #64746f;
+      --line: #d9e6e1;
+      --bg: #f5f8f7;
+      --panel: #ffffff;
+      --danger: #b42318;
+      --warning: #a15c07;
+      --shadow: 0 14px 34px rgba(21, 72, 52, .08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+    button, input, select, textarea {
+      font: inherit;
+    }
+    .login {
+      width: min(92vw, 420px);
+      margin: 12vh auto;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 24px;
+    }
+    .login h1 {
+      margin: 0 0 8px;
+      font-size: 1.5rem;
+    }
+    .login p {
+      margin: 0 0 20px;
+      color: var(--muted);
+    }
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 260px 1fr;
+    }
+    aside {
+      background: #0d2f23;
+      color: #e8fff4;
+      padding: 22px 18px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+    }
+    .brand {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    .mark {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border-radius: 12px;
+      background: var(--green);
+      font-weight: 900;
+    }
+    .brand strong { display: block; }
+    .brand span {
+      display: block;
+      color: #afd9c8;
+      font-size: .82rem;
+      margin-top: 2px;
+    }
+    nav {
+      display: grid;
+      gap: 8px;
+    }
+    nav button, .side-link {
+      width: 100%;
+      text-align: left;
+      border: 0;
+      border-radius: 12px;
+      padding: 12px 13px;
+      background: transparent;
+      color: #e8fff4;
+      cursor: pointer;
+      text-decoration: none;
+      display: block;
+      font-weight: 750;
+    }
+    nav button.active, nav button:hover, .side-link:hover {
+      background: rgba(255, 255, 255, .12);
+    }
+    main {
+      padding: 24px;
+      min-width: 0;
+    }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    h2 {
+      margin: 0;
+      font-size: 1.48rem;
+    }
+    .hint {
+      color: var(--muted);
+      font-size: .9rem;
+      margin-top: 4px;
+    }
+    .grid {
+      display: grid;
+      gap: 14px;
+    }
+    .cards {
+      grid-template-columns: repeat(6, minmax(130px, 1fr));
+    }
+    .metric {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 15px;
+      box-shadow: var(--shadow);
+    }
+    .metric span {
+      color: var(--muted);
+      font-size: .8rem;
+      font-weight: 800;
+    }
+    .metric strong {
+      display: block;
+      font-size: 1.65rem;
+      margin-top: 8px;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 16px;
+      margin-top: 16px;
+    }
+    .section { display: none; }
+    .section.active { display: block; }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: end;
+    }
+    label {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: .78rem;
+      font-weight: 800;
+    }
+    input, select, textarea {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fbfdfc;
+      color: var(--ink);
+      padding: 10px 11px;
+      min-height: 40px;
+      outline-color: var(--green);
+    }
+    textarea { resize: vertical; min-height: 70px; }
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 13px;
+      font-weight: 850;
+      cursor: pointer;
+    }
+    button:disabled { opacity: .62; cursor: wait; }
+    .primary { background: var(--green); color: white; }
+    .secondary { background: #e8f3ee; color: var(--green-dark); }
+    .danger { background: #fff1ef; color: var(--danger); }
+    .ghost { background: transparent; color: var(--green-dark); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .9rem;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 10px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      color: var(--muted);
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      background: #f9fbfa;
+    }
+    tr:hover td { background: #fbfefd; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 4px 8px;
+      font-size: .75rem;
+      font-weight: 850;
+      background: #e8f3ee;
+      color: var(--green-dark);
+    }
+    .badge.inactive, .badge.Absent { background: #fff1ef; color: var(--danger); }
+    .badge.warning { background: #fff7e6; color: var(--warning); }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(150px, 1fr));
+      gap: 12px;
+      align-items: end;
+    }
+    .span-2 { grid-column: span 2; }
+    .span-4 { grid-column: span 4; }
+    .message {
+      margin-top: 12px;
+      border-radius: 12px;
+      padding: 11px 12px;
+      display: none;
+    }
+    .message.ok { display: block; background: #eefaf3; color: var(--green-dark); }
+    .message.error { display: block; background: #fff1ef; color: var(--danger); }
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 24, 18, .48);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      z-index: 10;
+    }
+    .modal.open { display: flex; }
+    .dialog {
+      width: min(96vw, 760px);
+      max-height: 92vh;
+      overflow: auto;
+      background: white;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      padding: 18px;
+      box-shadow: 0 24px 70px rgba(0, 0, 0, .25);
+    }
+    .dialog-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+    .dialog-head h3 {
+      margin: 0;
+      font-size: 1.18rem;
+    }
+    .mobile-menu { display: none; }
+    @media (max-width: 1050px) {
+      .cards { grid-template-columns: repeat(3, 1fr); }
+      .form-grid { grid-template-columns: repeat(2, 1fr); }
+      .span-4 { grid-column: span 2; }
+    }
+    @media (max-width: 760px) {
+      .app { display: block; }
+      aside {
+        height: auto;
+        position: static;
+        padding: 14px;
+      }
+      nav {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      main { padding: 16px; }
+      .cards { grid-template-columns: repeat(2, 1fr); }
+      .form-grid { grid-template-columns: 1fr; }
+      .span-2, .span-4 { grid-column: span 1; }
+      .table-wrap { overflow-x: auto; }
+      th, td { white-space: nowrap; }
+    }
+  </style>
+</head>
+<body>
+  <section class="login" id="loginView">
+    <h1>Admin Login</h1>
+    <p>Enter the password saved in the Config sheet.</p>
+    <label>Password
+      <input id="password" type="password" autocomplete="current-password" placeholder="Admin password">
+    </label>
+    <div style="display:flex;gap:10px;margin-top:16px">
+      <button class="primary" id="loginBtn" type="button">Login</button>
+      <a class="ghost" style="padding:10px 0;text-decoration:none" href="?">Employee App</a>
+    </div>
+    <div class="message" id="loginMessage"></div>
+  </section>
+
+  <section class="app" id="appView" style="display:none">
+    <aside>
+      <div class="brand">
+        <div class="mark">A</div>
+        <div>
+          <strong id="sideCompany">Attendance</strong>
+          <span>Admin Console</span>
+        </div>
+      </div>
+      <nav>
+        <button class="active" type="button" data-section="dashboard">Dashboard</button>
+        <button type="button" data-section="employees">Employees</button>
+        <button type="button" data-section="attendance">Attendance</button>
+        <button type="button" data-section="settings">Settings</button>
+        <a class="side-link" href="?page=report">Reports</a>
+        <a class="side-link" href="?">Employee App</a>
+      </nav>
+    </aside>
+
+    <main>
+      <div class="topbar">
+        <div>
+          <h2 id="sectionTitle">Dashboard</h2>
+          <div class="hint" id="sectionHint">Today overview and operational alerts.</div>
+        </div>
+        <button class="secondary" type="button" id="refreshBtn">Refresh</button>
+      </div>
+
+      <section class="section active" id="dashboard">
+        <div class="grid cards">
+          <div class="metric"><span>Total Employees</span><strong id="mTotal">0</strong></div>
+          <div class="metric"><span>Active Employees</span><strong id="mActive">0</strong></div>
+          <div class="metric"><span>Today Present</span><strong id="mPresent">0</strong></div>
+          <div class="metric"><span>Incomplete</span><strong id="mIncomplete">0</strong></div>
+          <div class="metric"><span>Late Employees</span><strong id="mLate">0</strong></div>
+          <div class="metric"><span>Total OT Minutes</span><strong id="mOt">0</strong></div>
+        </div>
+        <div class="panel">
+          <div class="toolbar">
+            <strong>Today Attendance</strong>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Employee</th><th>Department</th><th>IN</th><th>OUT</th><th>Late</th><th>OT</th><th>Remarks</th></tr></thead>
+              <tbody id="todayRows"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="employees">
+        <div class="panel">
+          <div class="toolbar">
+            <strong>Employee Management</strong>
+            <button class="primary" type="button" id="newEmployeeBtn">New Employee</button>
+          </div>
+          <div class="filters">
+            <label>Search
+              <input id="employeeSearch" placeholder="Name, ID, department, phone">
+            </label>
+            <button class="secondary" type="button" id="employeeSearchBtn">Search</button>
+          </div>
+          <div class="table-wrap" style="margin-top:12px">
+            <table>
+              <thead><tr><th>ID</th><th>Name</th><th>Department</th><th>Phone</th><th>Email</th><th>Status</th><th></th></tr></thead>
+              <tbody id="employeeRows"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="attendance">
+        <div class="panel">
+          <div class="toolbar">
+            <strong>Attendance Management</strong>
+            <button class="primary" type="button" id="newAttendanceBtn">Add Record</button>
+          </div>
+          <div class="filters">
+            <label>Date
+              <input id="attDate" type="date">
+            </label>
+            <label>Month
+              <input id="attMonth" type="month">
+            </label>
+            <label>Search
+              <input id="attQuery" placeholder="Ali, EMP001, IT">
+            </label>
+            <label>Status
+              <select id="attStatus">
+                <option value="">All</option>
+                <option>Present</option>
+                <option>Absent</option>
+                <option>Leave</option>
+                <option>Holiday</option>
+              </select>
+            </label>
+            <button class="secondary" type="button" id="attendanceSearchBtn">Apply</button>
+          </div>
+          <div class="table-wrap" style="margin-top:12px">
+            <table>
+              <thead><tr><th>Date</th><th>ID</th><th>Name</th><th>Department</th><th>IN</th><th>OUT</th><th>Status</th><th>Late</th><th>Early</th><th>OT</th><th>Work</th><th></th></tr></thead>
+              <tbody id="attendanceRows"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="settings">
+        <div class="panel">
+          <div class="toolbar">
+            <strong>System Settings</strong>
+            <button class="primary" type="button" id="saveSettingsBtn">Save Settings</button>
+          </div>
+          <div class="form-grid" id="settingsFields"></div>
+          <div class="toolbar" style="margin-top:20px">
+            <strong>Holidays</strong>
+            <button class="secondary" type="button" id="addHolidayBtn">Add Holiday</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Date</th><th>Name</th><th></th></tr></thead>
+              <tbody id="holidayRows"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <div class="message" id="appMessage"></div>
+    </main>
+  </section>
+
+  <div class="modal" id="employeeModal">
+    <div class="dialog">
+      <div class="dialog-head">
+        <h3 id="employeeModalTitle">Employee</h3>
+        <button class="secondary" type="button" data-close="employeeModal">Close</button>
+      </div>
+      <div class="form-grid">
+        <label>Employee ID<input id="empId" placeholder="EMP001"></label>
+        <label>Name<input id="empName" placeholder="Employee name"></label>
+        <label>Department<input id="empDepartment" placeholder="Department"></label>
+        <label>Phone<input id="empPhone" placeholder="Phone"></label>
+        <label class="span-2">Email<input id="empEmail" type="email" placeholder="email@example.com"></label>
+        <label>Joining Date<input id="empJoining" type="date"></label>
+        <label>Status<select id="empStatus"><option>Active</option><option>Inactive</option></select></label>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+        <button class="primary" type="button" id="saveEmployeeBtn">Save Employee</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="attendanceModal">
+    <div class="dialog">
+      <div class="dialog-head">
+        <h3 id="attendanceModalTitle">Attendance Record</h3>
+        <button class="secondary" type="button" data-close="attendanceModal">Close</button>
+      </div>
+      <div class="form-grid">
+        <input id="editOriginalDate" type="hidden">
+        <input id="editOriginalEmployeeId" type="hidden">
+        <label>Date<input id="editDate" type="date"></label>
+        <label>Employee ID<input id="editEmployeeId" placeholder="EMP001" list="employeeIds"></label>
+        <datalist id="employeeIds"></datalist>
+        <label>IN Time<input id="editIn" type="time"></label>
+        <label>OUT Time<input id="editOut" type="time"></label>
+        <label>Status<select id="editStatus"><option>Present</option><option>Absent</option><option>Leave</option><option>Holiday</option></select></label>
+        <label class="span-4">Remarks<textarea id="editRemarks" placeholder="Remarks"></textarea></label>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+        <button class="primary" type="button" id="saveAttendanceBtn">Save Record</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let token = sessionStorage.getItem('attendanceAdminToken') || '';
+    let employees = [];
+    let attendanceRecords = [];
+    let settings = [];
+    let holidays = [];
+
+    const sections = {
+      dashboard: ['Dashboard', 'Today overview and operational alerts.'],
+      employees: ['Employees', 'Create, edit, search, activate, and deactivate employees.'],
+      attendance: ['Attendance', 'Review daily or monthly records and edit with automatic recalculation.'],
+      settings: ['Settings', 'Company settings, work times, admin password, and holidays.']
+    };
+
+    document.getElementById('loginBtn').addEventListener('click', login);
+    document.getElementById('password').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+    document.getElementById('refreshBtn').addEventListener('click', refreshCurrent);
+    document.getElementById('newEmployeeBtn').addEventListener('click', () => openEmployee());
+    document.getElementById('saveEmployeeBtn').addEventListener('click', saveEmployee);
+    document.getElementById('employeeSearchBtn').addEventListener('click', loadEmployees);
+    document.getElementById('employeeSearch').addEventListener('keydown', e => { if (e.key === 'Enter') loadEmployees(); });
+    document.getElementById('newAttendanceBtn').addEventListener('click', () => openAttendance());
+    document.getElementById('saveAttendanceBtn').addEventListener('click', saveAttendance);
+    document.getElementById('attendanceSearchBtn').addEventListener('click', loadAttendance);
+    document.getElementById('saveSettingsBtn').addEventListener('click', saveSettings);
+    document.getElementById('addHolidayBtn').addEventListener('click', addHolidayRow);
+    document.querySelectorAll('[data-close]').forEach(btn => {
+      btn.addEventListener('click', () => document.getElementById(btn.dataset.close).classList.remove('open'));
+    });
+    document.querySelectorAll('nav button[data-section]').forEach(btn => {
+      btn.addEventListener('click', () => showSection(btn.dataset.section));
+    });
+
+    if (token) {
+      showApp();
+      loadAll();
+    }
+
+    function login() {
+      const password = document.getElementById('password').value;
+      setBusy('loginBtn', true);
+      google.script.run
+        .withSuccessHandler(result => {
+          setBusy('loginBtn', false);
+          if (!result || !result.ok) return showLoginMessage((result && result.message) || 'Login failed.', 'error');
+          token = result.token;
+          sessionStorage.setItem('attendanceAdminToken', token);
+          document.getElementById('sideCompany').textContent = result.companyName || 'Attendance';
+          showApp();
+          loadAll();
+        })
+        .withFailureHandler(err => {
+          setBusy('loginBtn', false);
+          showLoginMessage(messageFromError(err), 'error');
+        })
+        .adminLogin(password);
+    }
+
+    function showApp() {
+      document.getElementById('loginView').style.display = 'none';
+      document.getElementById('appView').style.display = '';
+    }
+
+    function loadAll() {
+      loadDashboard();
+      loadEmployees();
+      loadAttendance();
+      loadSettings();
+    }
+
+    function showSection(id) {
+      document.querySelectorAll('.section').forEach(el => el.classList.toggle('active', el.id === id));
+      document.querySelectorAll('nav button[data-section]').forEach(btn => btn.classList.toggle('active', btn.dataset.section === id));
+      document.getElementById('sectionTitle').textContent = sections[id][0];
+      document.getElementById('sectionHint').textContent = sections[id][1];
+      if (id === 'dashboard') loadDashboard();
+      if (id === 'employees') loadEmployees();
+      if (id === 'attendance') loadAttendance();
+      if (id === 'settings') loadSettings();
+    }
+
+    function refreshCurrent() {
+      const active = document.querySelector('.section.active').id;
+      showSection(active);
+    }
+
+    function loadDashboard() {
+      google.script.run
+        .withSuccessHandler(result => {
+          if (!guard(result)) return;
+          const c = result.cards;
+          setText('mTotal', c.totalEmployees);
+          setText('mActive', c.activeEmployees);
+          setText('mPresent', c.todayPresent);
+          setText('mIncomplete', c.incompleteRecords);
+          setText('mLate', c.lateEmployees);
+          setText('mOt', c.totalOtMinutes);
+          renderTodayRows(result.recentAttendance || []);
+        })
+        .withFailureHandler(handleFailure)
+        .getDashboardData(token);
+    }
+
+    function loadEmployees() {
+      const q = document.getElementById('employeeSearch').value;
+      google.script.run
+        .withSuccessHandler(result => {
+          if (!guard(result)) return;
+          employees = result.employees || [];
+          renderEmployees();
+          renderEmployeeDatalist();
+        })
+        .withFailureHandler(handleFailure)
+        .listEmployees(token, q);
+    }
+
+    function loadAttendance() {
+      const filters = {
+        date: document.getElementById('attDate').value,
+        month: document.getElementById('attMonth').value,
+        query: document.getElementById('attQuery').value,
+        status: document.getElementById('attStatus').value
+      };
+      if (filters.date) filters.month = '';
+      google.script.run
+        .withSuccessHandler(result => {
+          if (!guard(result)) return;
+          attendanceRecords = result.records || [];
+          renderAttendance();
+        })
+        .withFailureHandler(handleFailure)
+        .listAttendance(token, filters);
+    }
+
+    function loadSettings() {
+      google.script.run
+        .withSuccessHandler(result => {
+          if (!guard(result)) return;
+          settings = result.settings || [];
+          holidays = result.holidays || [];
+          renderSettings();
+          renderHolidays();
+        })
+        .withFailureHandler(handleFailure)
+        .getSettings(token);
+    }
+
+    function renderTodayRows(rows) {
+      const body = document.getElementById('todayRows');
+      body.innerHTML = rows.length ? rows.map(r => `
+        <tr>
+          <td><strong>${esc(r.employeeName)}</strong><br><span class="hint">${esc(r.employeeId)}</span></td>
+          <td>${esc(r.department)}</td>
+          <td>${esc(r.inTime || '-')}</td>
+          <td>${esc(r.outTime || '-')}</td>
+          <td>${Number(r.lateMinutes || 0)}</td>
+          <td>${Number(r.otMinutes || 0)}</td>
+          <td>${esc(r.remarks || (r.outTime ? '' : 'Incomplete Checkout'))}</td>
+        </tr>
+      `).join('') : '<tr><td colspan="7">No attendance recorded today.</td></tr>';
+    }
+
+    function renderEmployees() {
+      const body = document.getElementById('employeeRows');
+      body.innerHTML = employees.length ? employees.map(e => `
+        <tr>
+          <td><strong>${esc(e.employeeId)}</strong></td>
+          <td>${esc(e.name)}</td>
+          <td>${esc(e.department)}</td>
+          <td>${esc(e.phone)}</td>
+          <td>${esc(e.email)}</td>
+          <td><span class="badge ${e.status === 'Inactive' ? 'inactive' : ''}">${esc(e.status)}</span></td>
+          <td><button class="secondary" type="button" onclick="openEmployee('${escAttr(e.employeeId)}')">Edit</button></td>
+        </tr>
+      `).join('') : '<tr><td colspan="7">No employees found.</td></tr>';
+    }
+
+    function renderAttendance() {
+      const body = document.getElementById('attendanceRows');
+      body.innerHTML = attendanceRecords.length ? attendanceRecords.map(r => `
+        <tr>
+          <td>${esc(r.date)}</td>
+          <td>${esc(r.employeeId)}</td>
+          <td>${esc(r.employeeName)}</td>
+          <td>${esc(r.department)}</td>
+          <td>${esc(r.inTime || '-')}</td>
+          <td>${esc(r.outTime || '-')}</td>
+          <td><span class="badge ${!r.outTime && r.inTime ? 'warning' : ''}">${esc(r.status)}</span></td>
+          <td>${Number(r.lateMinutes || 0)}</td>
+          <td>${Number(r.earlyLeaveMinutes || 0)}</td>
+          <td>${Number(r.otMinutes || 0)}</td>
+          <td>${Number(r.workingMinutes || 0)}</td>
+          <td><button class="secondary" type="button" onclick="openAttendance('${escAttr(r.recordKey)}')">Edit</button></td>
+        </tr>
+      `).join('') : '<tr><td colspan="12">No attendance records found.</td></tr>';
+    }
+
+    function renderSettings() {
+      const wrap = document.getElementById('settingsFields');
+      wrap.innerHTML = settings.map(item => {
+        const key = escAttr(item.key);
+        const value = escAttr(item.value);
+        const type = item.key.indexOf('Time') !== -1 ? 'time' : item.key === 'Admin Password' ? 'password' : 'text';
+        if (['Saturday Working', 'Sunday Holiday', 'OT Enabled'].includes(item.key)) {
+          return `<label>${esc(item.key)}<select data-setting="${key}"><option ${item.value === 'Yes' ? 'selected' : ''}>Yes</option><option ${item.value === 'No' ? 'selected' : ''}>No</option></select></label>`;
+        }
+        return `<label>${esc(item.key)}<input data-setting="${key}" type="${type}" value="${value}"></label>`;
+      }).join('');
+    }
+
+    function renderHolidays() {
+      const body = document.getElementById('holidayRows');
+      body.innerHTML = holidays.length ? holidays.map((h, i) => `
+        <tr>
+          <td><input type="date" data-holiday-date="${i}" value="${escAttr(h.date)}"></td>
+          <td><input data-holiday-name="${i}" value="${escAttr(h.name)}"></td>
+          <td><button class="danger" type="button" onclick="removeHoliday(${i})">Remove</button></td>
+        </tr>
+      `).join('') : '<tr><td colspan="3">No holidays configured.</td></tr>';
+    }
+
+    function renderEmployeeDatalist() {
+      document.getElementById('employeeIds').innerHTML = employees.map(e => `<option value="${escAttr(e.employeeId)}">${esc(e.name)}</option>`).join('');
+    }
+
+    function openEmployee(employeeId) {
+      const e = employees.find(item => item.employeeId === employeeId) || {
+        employeeId: '', name: '', department: '', phone: '', email: '', joiningDate: todayValue(), status: 'Active'
+      };
+      document.getElementById('employeeModalTitle').textContent = e.employeeId ? 'Edit Employee' : 'New Employee';
+      setValue('empId', e.employeeId);
+      document.getElementById('empId').disabled = Boolean(e.employeeId);
+      setValue('empName', e.name);
+      setValue('empDepartment', e.department);
+      setValue('empPhone', e.phone);
+      setValue('empEmail', e.email);
+      setValue('empJoining', e.joiningDate || todayValue());
+      setValue('empStatus', e.status || 'Active');
+      document.getElementById('employeeModal').classList.add('open');
+    }
+
+    function saveEmployee() {
+      const payload = {
+        employeeId: value('empId'),
+        name: value('empName'),
+        department: value('empDepartment'),
+        phone: value('empPhone'),
+        email: value('empEmail'),
+        joiningDate: value('empJoining'),
+        status: value('empStatus')
+      };
+      setBusy('saveEmployeeBtn', true);
+      google.script.run
+        .withSuccessHandler(result => {
+          setBusy('saveEmployeeBtn', false);
+          if (!guard(result)) return;
+          document.getElementById('employeeModal').classList.remove('open');
+          showAppMessage('Employee saved.', 'ok');
+          loadEmployees();
+          loadDashboard();
+        })
+        .withFailureHandler(err => {
+          setBusy('saveEmployeeBtn', false);
+          handleFailure(err);
+        })
+        .saveEmployee(token, payload);
+    }
+
+    function openAttendance(recordKey) {
+      const r = attendanceRecords.find(item => item.recordKey === recordKey) || {
+        recordKey: '', date: todayValue(), employeeId: '', inTime: '', outTime: '', status: 'Present', remarks: ''
+      };
+      document.getElementById('attendanceModalTitle').textContent = r.recordKey ? 'Edit Attendance' : 'Add Attendance';
+      setValue('editOriginalDate', r.recordKey ? r.date : '');
+      setValue('editOriginalEmployeeId', r.recordKey ? r.employeeId : '');
+      setValue('editDate', r.date || todayValue());
+      setValue('editEmployeeId', r.employeeId);
+      setValue('editIn', r.inTime);
+      setValue('editOut', r.outTime);
+      setValue('editStatus', r.status || 'Present');
+      setValue('editRemarks', r.remarks);
+      document.getElementById('attendanceModal').classList.add('open');
+    }
+
+    function saveAttendance() {
+      const payload = {
+        originalDate: value('editOriginalDate'),
+        originalEmployeeId: value('editOriginalEmployeeId'),
+        date: value('editDate'),
+        employeeId: value('editEmployeeId'),
+        inTime: value('editIn'),
+        outTime: value('editOut'),
+        status: value('editStatus'),
+        remarks: value('editRemarks'),
+        editedBy: 'Admin'
+      };
+      setBusy('saveAttendanceBtn', true);
+      google.script.run
+        .withSuccessHandler(result => {
+          setBusy('saveAttendanceBtn', false);
+          if (!guard(result)) return;
+          document.getElementById('attendanceModal').classList.remove('open');
+          showAppMessage('Attendance saved and recalculated.', 'ok');
+          loadAttendance();
+          loadDashboard();
+        })
+        .withFailureHandler(err => {
+          setBusy('saveAttendanceBtn', false);
+          handleFailure(err);
+        })
+        .saveAttendanceRecord(token, payload);
+    }
+
+    function addHolidayRow() {
+      holidays.push({ date: todayValue(), name: 'Holiday' });
+      renderHolidays();
+    }
+
+    function removeHoliday(index) {
+      holidays.splice(index, 1);
+      renderHolidays();
+    }
+
+    function saveSettings() {
+      const updatedSettings = Array.from(document.querySelectorAll('[data-setting]')).map(el => ({
+        key: el.dataset.setting,
+        value: el.value
+      }));
+      const updatedHolidays = holidays.map((h, i) => ({
+        date: document.querySelector(`[data-holiday-date="${i}"]`)?.value || h.date,
+        name: document.querySelector(`[data-holiday-name="${i}"]`)?.value || h.name
+      })).filter(h => h.date);
+      setBusy('saveSettingsBtn', true);
+      google.script.run
+        .withSuccessHandler(result => {
+          setBusy('saveSettingsBtn', false);
+          if (!guard(result)) return;
+          settings = result.settings || [];
+          holidays = result.holidays || [];
+          renderSettings();
+          renderHolidays();
+          showAppMessage('Settings saved.', 'ok');
+        })
+        .withFailureHandler(err => {
+          setBusy('saveSettingsBtn', false);
+          handleFailure(err);
+        })
+        .saveSettings(token, updatedSettings, updatedHolidays);
+    }
+
+    function guard(result) {
+      if (result && result.ok) return true;
+      showAppMessage((result && result.message) || 'Request failed.', 'error');
+      return false;
+    }
+
+    function handleFailure(err) {
+      showAppMessage(messageFromError(err), 'error');
+    }
+
+    function showLoginMessage(message, type) {
+      const el = document.getElementById('loginMessage');
+      el.className = 'message ' + type;
+      el.textContent = message;
+    }
+
+    function showAppMessage(message, type) {
+      const el = document.getElementById('appMessage');
+      el.className = 'message ' + type;
+      el.textContent = message;
+      clearTimeout(showAppMessage.timer);
+      showAppMessage.timer = setTimeout(() => { el.className = 'message'; }, 5000);
+    }
+
+    function setBusy(id, busy) {
+      const el = document.getElementById(id);
+      if (el) el.disabled = busy;
+    }
+
+    function setText(id, text) {
+      document.getElementById(id).textContent = text;
+    }
+
+    function setValue(id, val) {
+      document.getElementById(id).value = val == null ? '' : val;
+    }
+
+    function value(id) {
+      return document.getElementById(id).value.trim();
+    }
+
+    function todayValue() {
+      return new Date().toISOString().slice(0, 10);
+    }
+
+    function messageFromError(err) {
+      return err && err.message ? err.message : String(err || 'Unknown error');
+    }
+
+    function esc(value) {
+      return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function escAttr(value) {
+      return esc(value).replace(/`/g, '&#096;');
+    }
+  </script>
+</body>
+</html>

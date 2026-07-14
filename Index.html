@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root {
+      --green: #0f8f58;
+      --green-dark: #087046;
+      --ink: #17312a;
+      --muted: #637871;
+      --line: #dbe8e3;
+      --bg: #f3faf7;
+      --danger: #b42318;
+      --warning: #9a5b06;
+      --white: #ffffff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: linear-gradient(180deg, #e8f7f0 0%, var(--bg) 48%, #ffffff 100%);
+    }
+    .app {
+      width: min(100%, 520px);
+      margin: 0 auto;
+      padding: 22px 16px 30px;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+    .brand {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      min-width: 0;
+    }
+    .logo {
+      width: 46px;
+      height: 46px;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      background: var(--green);
+      color: #fff;
+      font-weight: 900;
+      flex: none;
+    }
+    h1 {
+      margin: 0;
+      font-size: 1.22rem;
+      line-height: 1.15;
+    }
+    .date {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: .86rem;
+    }
+    .admin-link {
+      color: var(--green-dark);
+      font-weight: 800;
+      font-size: .9rem;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .panel {
+      background: rgba(255, 255, 255, .94);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      box-shadow: 0 16px 46px rgba(18, 94, 62, .11);
+      padding: 18px;
+    }
+    .title {
+      font-size: 1.38rem;
+      font-weight: 900;
+      margin: 0 0 7px;
+    }
+    .subtitle {
+      margin: 0 0 18px;
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: .95rem;
+    }
+    label {
+      display: grid;
+      gap: 8px;
+      color: var(--muted);
+      font-size: .84rem;
+      font-weight: 800;
+    }
+    input, button {
+      font: inherit;
+    }
+    input {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px 14px;
+      min-height: 56px;
+      background: #fbfffd;
+      color: var(--ink);
+      text-transform: uppercase;
+      font-size: 1.1rem;
+      font-weight: 800;
+      letter-spacing: .02em;
+      outline-color: var(--green);
+    }
+    input::placeholder {
+      color: #9aacA6;
+      font-weight: 700;
+    }
+    button {
+      width: 100%;
+      border: 0;
+      border-radius: 16px;
+      padding: 15px 16px;
+      margin-top: 12px;
+      min-height: 54px;
+      background: var(--green);
+      color: white;
+      font-weight: 900;
+      cursor: pointer;
+    }
+    button:disabled {
+      cursor: wait;
+      opacity: .65;
+    }
+    .status-card {
+      margin-top: 16px;
+      border-radius: 18px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      background: white;
+      min-height: 116px;
+    }
+    .status-card.ok { border-color: #93d5b4; background: #f0fbf5; }
+    .status-card.error { border-color: #f5b6b0; background: #fff4f2; color: var(--danger); }
+    .status-card.busy { border-color: #f4cf8b; background: #fff9eb; color: var(--warning); }
+    .status-title {
+      font-size: 1.08rem;
+      font-weight: 900;
+      margin-bottom: 8px;
+    }
+    .status-detail {
+      display: grid;
+      gap: 5px;
+      color: inherit;
+      font-size: .95rem;
+    }
+    .record-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 13px;
+    }
+    .metric {
+      border-radius: 14px;
+      background: rgba(255, 255, 255, .76);
+      border: 1px solid rgba(15, 143, 88, .16);
+      padding: 10px;
+      min-width: 0;
+    }
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: .75rem;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+    .metric strong {
+      display: block;
+      font-size: 1.02rem;
+      overflow-wrap: anywhere;
+    }
+    .note {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: .84rem;
+      line-height: 1.45;
+      text-align: center;
+    }
+    @media (min-width: 720px) {
+      .app { padding-top: 38px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div class="brand">
+        <div class="logo">IN</div>
+        <div>
+          <h1 id="companyName">Attendance</h1>
+          <div class="date" id="serverDate">Loading...</div>
+        </div>
+      </div>
+      <a class="admin-link" href="?page=admin">Admin</a>
+    </header>
+
+    <section class="panel">
+      <h2 class="title">Employee Attendance</h2>
+      <p class="subtitle">Enter your Employee ID or name. First entry records check-in. Second entry records check-out.</p>
+
+      <label for="employeeId">Employee ID or Name
+        <input id="employeeId" autocomplete="off" inputmode="text" placeholder="EMP001 or Yasir Abbas">
+      </label>
+      <button id="submitBtn" type="button">Submit Attendance</button>
+
+      <div class="status-card busy" id="statusCard">
+        <div class="status-title">Ready</div>
+        <div class="status-detail">Type Employee ID or name and submit.</div>
+      </div>
+    </section>
+
+    <div class="note">Duplicate rapid submissions are blocked automatically.</div>
+  </main>
+
+  <script>
+    let busy = false;
+    const employeeId = document.getElementById('employeeId');
+    const submitBtn = document.getElementById('submitBtn');
+    const statusCard = document.getElementById('statusCard');
+
+    window.addEventListener('load', () => {
+      employeeId.focus();
+      google.script.run
+        .withSuccessHandler(data => {
+          if (data && data.ok) {
+            document.getElementById('companyName').textContent = data.companyName || 'Attendance';
+            document.getElementById('serverDate').textContent = data.serverDate + ' - ' + data.serverTime;
+          }
+        })
+        .getAppBootstrap();
+    });
+
+    submitBtn.addEventListener('click', submitAttendance);
+    employeeId.addEventListener('keydown', event => {
+      if (event.key === 'Enter') submitAttendance();
+    });
+    function submitAttendance() {
+      const identifier = employeeId.value.trim().replace(/\s+/g, ' ');
+      if (!identifier || busy) {
+        if (!identifier) setStatus('Employee ID or name required', 'error', 'Enter EMP001 or the employee name.');
+        return;
+      }
+
+      busy = true;
+      submitBtn.disabled = true;
+      setStatus('Recording attendance...', 'busy', identifier);
+
+      google.script.run
+        .withSuccessHandler(result => {
+          busy = false;
+          submitBtn.disabled = false;
+          employeeId.focus();
+          if (result && result.ok) {
+            employeeId.value = '';
+            renderSuccess(result);
+          } else {
+            setStatus((result && result.message) || 'Attendance failed.', 'error');
+          }
+        })
+        .withFailureHandler(err => {
+          busy = false;
+          submitBtn.disabled = false;
+          employeeId.focus();
+          setStatus('Attendance failed', 'error', err && err.message ? err.message : String(err));
+        })
+        .markAttendance(identifier);
+    }
+
+    function renderSuccess(result) {
+      const r = result.record || {};
+      const action = result.action === 'checkout' ? 'Check-out recorded' : 'Check-in recorded';
+      statusCard.className = 'status-card ok';
+      statusCard.innerHTML = `
+        <div class="status-title">${escapeHtml(action)}</div>
+        <div class="status-detail">
+          <strong>${escapeHtml(result.employee.name)} (${escapeHtml(result.employee.employeeId)})</strong>
+          <span>${escapeHtml(result.employee.department || 'No department')}</span>
+        </div>
+        <div class="record-grid">
+          <div class="metric"><span>Date</span><strong>${escapeHtml(r.date || result.date)}</strong></div>
+          <div class="metric"><span>Time</span><strong>${escapeHtml(result.time)}</strong></div>
+          <div class="metric"><span>IN</span><strong>${escapeHtml(r.inTime || '-')}</strong></div>
+          <div class="metric"><span>OUT</span><strong>${escapeHtml(r.outTime || '-')}</strong></div>
+          <div class="metric"><span>Late</span><strong>${Number(r.lateMinutes || 0)} min</strong></div>
+          <div class="metric"><span>OT</span><strong>${Number(r.otMinutes || 0)} min</strong></div>
+          <div class="metric"><span>Work</span><strong>${Number(r.workingMinutes || 0)} min</strong></div>
+          <div class="metric"><span>Status</span><strong>${escapeHtml(r.status || 'Present')}</strong></div>
+        </div>
+      `;
+    }
+
+    function setStatus(title, type, detail) {
+      statusCard.className = 'status-card ' + (type || 'busy');
+      statusCard.innerHTML = `
+        <div class="status-title">${escapeHtml(title)}</div>
+        <div class="status-detail">${escapeHtml(detail || '')}</div>
+      `;
+    }
+
+    function escapeHtml(value) {
+      return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+  </script>
+</body>
+</html>
